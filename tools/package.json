@@ -1,0 +1,31 @@
+{
+  "name": "testing-buddy-ai-connectivity-tools",
+  "version": "1.0.0",
+  "description": "Connectivity test utilities for Testing Buddy AI external services",
+  "main": "run-connectivity-tests.js",
+  "scripts": {
+    "test": "node run-connectivity-tests.js",
+    "test:llm": "node test-llm-connectivity.js",
+    "test:jira": "node test-jira-connectivity.js",
+    "test:postgres": "node test-postgres-connectivity.js",
+    "test:rally": "node test-rally-connectivity.js"
+  },
+  "dependencies": {
+    "pg": "^8.11.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "keywords": [
+    "testing",
+    "ai",
+    "connectivity",
+    "llm",
+    "jira",
+    "postgresql",
+    "rally",
+    "testlink"
+  ],
+  "author": "Testing Buddy AI Team",
+  "license": "MIT"
+}

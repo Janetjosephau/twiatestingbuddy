@@ -1,0 +1,35 @@
+{
+  "_comment": "Testing Buddy AI Connectivity Configuration",
+  "_instructions": "Fill in your actual credentials below. This file should NOT be committed to version control.",
+
+  "llm": {
+    "openaiApiKey": "",
+    "geminiApiKey": "",
+    "grokApiKey": ""
+  },
+
+  "jira": {
+    "instanceUrl": "",
+    "email": "",
+    "apiToken": "",
+    "projectKey": ""
+  },
+
+  "postgres": {
+    "host": "localhost",
+    "port": 5432,
+    "database": "testingbuddy_db",
+    "username": "postgres",
+    "password": ""
+  },
+
+  "rally": {
+    "apiKey": "",
+    "workspaceId": ""
+  },
+
+  "testlink": {
+    "url": "",
+    "apiKey": ""
+  }
+}

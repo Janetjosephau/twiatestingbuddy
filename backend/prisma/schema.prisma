@@ -1,0 +1,107 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model LLMConfig {
+  id           String   @id @default(cuid())
+  provider     String
+  name         String
+  apiKey       String   // Will be encrypted
+  apiUrl       String?
+  model        String
+  temperature  Float?   @default(0.7)
+  maxTokens    Int?     @default(2048)
+  createdAt    DateTime @default(now())
+  lastTestedAt DateTime?
+  testStatus   String   @default("untested") // "untested" | "connected" | "failed"
+  testError    String?
+
+  // Relations
+  testPlans    TestPlan[]
+
+  @@map("llm_configs")
+}
+
+model JiraConfig {
+  id           String   @id @default(cuid())
+  instanceUrl  String
+  email        String
+  apiToken     String   // Will be encrypted
+  projectKey   String?
+  createdAt    DateTime @default(now())
+  lastTestedAt DateTime?
+  testStatus   String   @default("untested") // "untested" | "connected" | "failed"
+  testError    String?
+
+  // Relations
+  testPlans    TestPlan[]
+
+  @@map("jira_configs")
+}
+
+model RallyConfig {
+  id            String   @id @default(cuid())
+  instanceUrl   String   @default("https://rally1.rallydev.com")
+  apiKey        String   // API Key (ZSESSIONID)
+  workspaceName String?
+  projectName   String?
+  createdAt     DateTime @default(now())
+  lastTestedAt  DateTime?
+  testStatus    String   @default("untested") // "untested" | "connected" | "failed"
+  testError     String?
+
+  @@map("rally_configs")
+}
+
+model TestPlan {
+  id           String   @id @default(cuid())
+  name         String
+  description  String
+  jiraIssueId  String
+  generatedBy  String   // LLM config ID
+  generatedAt  DateTime @default(now())
+  content      String   // JSON string of content object
+  exportFormat String?  // "pdf" | "json"
+  status       String   @default("draft") // "draft" | "finalized" | "synced_to_jira"
+
+  // Relations
+  llmConfig    LLMConfig @relation(fields: [generatedBy], references: [id])
+  jiraConfig   JiraConfig? @relation(fields: [jiraConfigId], references: [id])
+  jiraConfigId String?
+  testCases    TestCase[]
+
+  @@index([generatedAt])
+  @@map("test_plans")
+}
+
+model TestCase {
+  id             String   @id @default(cuid())
+  testPlanId     String
+  caseId         String
+  title          String
+  preconditions  String   // JSON array
+  steps          String   // JSON array of step objects
+  postconditions String   // JSON array
+  priority       String   @default("Medium") // "Low" | "Medium" | "High"
+  status         String   @default("New")    // "New" | "In review" | "Approved" | "Retired"
+  method         String?  @default("Manual") // "Manual" | "Automate"
+  type           String?  @default("Functional") // "Functional" | "Performance"
+  workProduct    String?
+  testFolder     String?
+  testData       String?  // JSON string
+  createdAt      DateTime @default(now())
+
+  // Relations
+  testPlan       TestPlan @relation(fields: [testPlanId], references: [id])
+
+  @@index([createdAt])
+  @@map("test_cases")
+}

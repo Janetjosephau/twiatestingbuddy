@@ -1,0 +1,45 @@
+# Node modules
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Environment variables
+.env
+.env.development
+.env.production
+.env.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+build_error.txt
+build_output.txt
+ts-error*.txt
+vite-error.txt
+
+# Editor stuff
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.gemini/
+.tmp/
+
+# OS stuff
+.DS_Store
+Thumbs.db
+
+# Project specific
+backend/dist/
+frontend/dist/
+backend/output.txt
+backend/node_modules/
+frontend/node_modules/
+backend/*.db
+backend/startup_log*.txt
+backend/prisma.config.ts

@@ -1,0 +1,124 @@
+{
+  "timestamp": "2026-04-22T13:59:49.570Z",
+  "results": {
+    "llm": {
+      "openai": {
+        "success": false,
+        "error": "No API key provided"
+      },
+      "gemini": {
+        "success": false,
+        "error": "No API key provided"
+      },
+      "ollama": {
+        "success": true,
+        "response": {
+          "models": [
+            {
+              "name": "qwen:7b",
+              "model": "qwen:7b",
+              "modified_at": "2026-04-07T20:16:47.8167035-05:00",
+              "size": 4511914544,
+              "digest": "2091ee8c8d8f27f790c298265b1353da099a276e6c612e3b4864e72f1993cc33",
+              "details": {
+                "parent_model": "",
+                "format": "gguf",
+                "family": "qwen2",
+                "families": [
+                  "qwen2"
+                ],
+                "parameter_size": "8B",
+                "quantization_level": "Q4_0"
+              }
+            },
+            {
+              "name": "qwen3:4b",
+              "model": "qwen3:4b",
+              "modified_at": "2026-03-29T12:31:14.9203849-05:00",
+              "size": 2497293931,
+              "digest": "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7",
+              "details": {
+                "parent_model": "",
+                "format": "gguf",
+                "family": "qwen3",
+                "families": [
+                  "qwen3"
+                ],
+                "parameter_size": "4.0B",
+                "quantization_level": "Q4_K_M"
+              }
+            },
+            {
+              "name": "llama3:latest",
+              "model": "llama3:latest",
+              "modified_at": "2026-03-28T21:05:02.0007688-05:00",
+              "size": 4661224676,
+              "digest": "365c0bd3c000a25d28ddbf732fe1c6add414de7275464c4e4d1c3b5fcb5d8ad1",
+              "details": {
+                "parent_model": "",
+                "format": "gguf",
+                "family": "llama",
+                "families": [
+                  "llama"
+                ],
+                "parameter_size": "8.0B",
+                "quantization_level": "Q4_0"
+              }
+            },
+            {
+              "name": "mistral:7b",
+              "model": "mistral:7b",
+              "modified_at": "2026-03-28T18:47:47.3470151-05:00",
+              "size": 4372824384,
+              "digest": "6577803aa9a036369e481d648a2baebb381ebc6e897f2bb9a766a2aa7bfbc1cf",
+              "details": {
+                "parent_model": "",
+                "format": "gguf",
+                "family": "llama",
+                "families": [
+                  "llama"
+                ],
+                "parameter_size": "7.2B",
+                "quantization_level": "Q4_K_M"
+              }
+            }
+          ]
+        }
+      },
+      "lmstudio": {
+        "success": false,
+        "error": "Request failed: "
+      },
+      "grok": {
+        "success": false,
+        "error": "No API key provided"
+      }
+    },
+    "jira": {
+      "basic": {
+        "success": false,
+        "error": "Credentials not provided"
+      }
+    },
+    "postgres": {
+      "basic": {
+        "success": false,
+        "error": "Credentials not provided"
+      }
+    },
+    "rally": {
+      "success": false,
+      "error": "API key not provided"
+    },
+    "testlink": {
+      "success": false,
+      "error": "Credentials not provided"
+    }
+  },
+  "summary": {
+    "total": 9,
+    "passed": 1,
+    "failed": 1,
+    "skipped": 7
+  }
+}
