@@ -81,7 +81,18 @@ const CreditCardGenerator: React.FC = () => {
       const cleaned = rawText.replace(/```json|```/g, '').trim()
       const jsonMatch = cleaned.match(/\[[\s\S]*\]/)
       if (jsonMatch) {
-        const cards: GeneratedCard[] = JSON.parse(jsonMatch[0])
+        // Normalize card fields — LLMs sometimes use snake_case or different names
+        const normalize = (raw: any): GeneratedCard => ({
+          cardType: raw.cardType || raw.card_type || cardType,
+          cardNumber: raw.cardNumber || raw.card_number || raw.number || '0000 0000 0000 0000',
+          cardHolder: raw.cardHolder || raw.card_holder || raw.holder || raw.name || 'TEST HOLDER',
+          expiryDate: raw.expiryDate || raw.expiry_date || raw.expiry || raw.exp || '12/28',
+          cvv: raw.cvv || raw.cvc || raw.securityCode || '000',
+          billingAddress: raw.billingAddress || raw.billing_address || raw.address || '',
+          zipCode: raw.zipCode || raw.zip_code || raw.zip || raw.postal_code || '00000',
+          note: raw.note || 'FOR TESTING PURPOSES ONLY',
+        })
+        const cards: GeneratedCard[] = JSON.parse(jsonMatch[0]).map(normalize)
         setGeneratedCards(cards)
         toast.success(`Generated ${cards.length} test card(s)!`)
       } else {
@@ -113,7 +124,8 @@ const CreditCardGenerator: React.FC = () => {
   const getCardGradient = (type: string) =>
     CARD_TYPES.find(c => c.value === type)?.color || 'from-slate-600 to-slate-800'
 
-  const formatCardNumber = (num: string) => {
+  const formatCardNumber = (num: string | undefined) => {
+    if (!num) return '•••• •••• •••• ••••'
     const clean = num.replace(/\s/g, '')
     if (clean.length === 15) return `${clean.slice(0, 4)} ${clean.slice(4, 10)} ${clean.slice(10)}`
     return clean.replace(/(.{4})/g, '$1 ').trim()
