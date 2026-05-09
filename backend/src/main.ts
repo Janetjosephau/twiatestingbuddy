@@ -30,10 +30,10 @@ async function bootstrap() {
   app.setGlobalPrefix('api', { exclude: ['/'] });
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
-  console.log(`🚀 Testing Buddy AI Backend running on: http://localhost:${port}/api`);
-  console.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
+  console.log(`🚀 Testing Buddy AI Backend running on: http://0.0.0.0:${port}/api`);
+  console.log(`📚 API Documentation: http://0.0.0.0:${port}/api/docs`);
 }
 
 bootstrap();
