@@ -40,4 +40,10 @@ export class LlmController {
   async deleteConfig(@Param('id') id: string) {
     return this.llmService.deleteConfig(id);
   }
+
+  @Post('generate')
+  async generate(@Body() body: { llmConfigId: string; prompt: string }) {
+    const text = await this.llmService.generateText(body.prompt, body.llmConfigId);
+    return { success: true, text };
+  }
 }

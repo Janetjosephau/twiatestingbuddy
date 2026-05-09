@@ -50,7 +50,7 @@ export class OllamaAdapter implements LLMAdapter {
         url = `${url}/api/generate`;
       }
       const response = await axios.post(url, payload, {
-        timeout: 300000, // 5 minutes for slow local models
+        timeout: 900000, // 15 minutes for slow local models
         headers: {
           'ngrok-skip-browser-warning': 'true',
           'User-Agent': 'TestingBuddy-AI',

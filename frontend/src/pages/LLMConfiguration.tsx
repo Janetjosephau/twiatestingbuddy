@@ -37,7 +37,7 @@ const LLMConfiguration: React.FC = () => {
     {
       name: 'ollama',
       label: 'Ollama (Self-Hosted)',
-      models: ['llama3', 'llama2', 'mistral', 'neural-chat'],
+      models: ['llama3', 'llama2', 'mistral', 'neural-chat', 'qwen3:4b', 'qwen3:5:4b'],
       requiresUrl: true
     },
     {

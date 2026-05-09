@@ -8,6 +8,7 @@ import {
   FileText,
   FileCheck,
   BarChart,
+  CreditCard,
   Menu,
   X
 } from 'lucide-react'
@@ -111,6 +112,17 @@ const Sidebar: React.FC = () => {
                 >
                   <FileCheck size={22} className={isActive('/generator/test-case') ? 'fill-emerald-500/10' : ''} />
                   <span className="font-bold">Test Case Generator</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/generator/credit-card"
+                  className={`flex items-center space-x-3 transition-all duration-200 ${
+                    isActive('/generator/credit-card') ? 'text-emerald-500' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <CreditCard size={22} className={isActive('/generator/credit-card') ? 'fill-emerald-500/10' : ''} />
+                  <span className="font-bold">Credit Card Generator</span>
                 </Link>
               </li>
             </ul>
