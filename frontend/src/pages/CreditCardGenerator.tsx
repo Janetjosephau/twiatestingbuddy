@@ -4,6 +4,61 @@ import toast from 'react-hot-toast'
 import { llmApi } from '../services/api'
 import api from '../services/api'
 
+// ─── Luhn-Compliant Card Number Generator ────────────────────────────────────
+// BIN prefixes per network (real issuer ranges used for testing)
+const CARD_BINS: Record<string, string[]> = {
+  Visa:               ['4000', '4111', '4242', '4012', '4532', '4916', '4929', '4539'],
+  Mastercard:         ['5100', '5200', '5300', '5400', '5500', '5105', '5425', '5521'],
+  'American Express': ['3714', '3782', '3787', '3790', '3400', '3711'],
+  Discover:           ['6011', '6221', '6440', '6450', '6500'],
+}
+const CARD_LENGTHS: Record<string, number> = {
+  Visa: 16, Mastercard: 16, 'American Express': 15, Discover: 16,
+}
+
+function randomDigit() { return Math.floor(Math.random() * 10) }
+
+function generateLuhnNumber(cardType: string): string {
+  const bins = CARD_BINS[cardType] || CARD_BINS['Visa']
+  const bin = bins[Math.floor(Math.random() * bins.length)]
+  const totalLen = CARD_LENGTHS[cardType] || 16
+
+  // BIN digits + random fill (leave last slot for check digit)
+  const digits = bin.split('').map(Number)
+  while (digits.length < totalLen - 1) digits.push(randomDigit())
+
+  // Calculate Luhn check digit
+  let sum = 0
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let d = digits[i]
+    if ((digits.length - i) % 2 === 1) { d *= 2; if (d > 9) d -= 9 }
+    sum += d
+  }
+  const checkDigit = (10 - (sum % 10)) % 10
+  digits.push(checkDigit)
+  return digits.join('')
+}
+
+function formatCardNumber(num: string, cardType: string): string {
+  if (cardType === 'American Express') {
+    return `${num.slice(0, 4)} ${num.slice(4, 10)} ${num.slice(10)}`
+  }
+  return num.replace(/(\d{4})(?=\d)/g, '$1 ').trim()
+}
+
+function randomCVV(cardType: string): string {
+  const len = cardType === 'American Express' ? 4 : 3
+  return Array.from({ length: len }, () => randomDigit()).join('')
+}
+
+function futureDateMMYY(): string {
+  const now = new Date()
+  const year = now.getFullYear() + 2 + Math.floor(Math.random() * 3)
+  const month = Math.floor(Math.random() * 12) + 1
+  return `${String(month).padStart(2, '0')}/${String(year).slice(2)}`
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface GeneratedCard {
   cardType: string
   cardNumber: string
@@ -59,39 +114,37 @@ const CreditCardGenerator: React.FC = () => {
     setGenerating(true)
     setGeneratedCards([])
 
-    const cvvLength = cardType === 'American Express' ? '4' : '3'
+    // Card numbers, CVVs, and expiry are generated locally (Luhn-compliant).
+    // The LLM is only asked for human-readable data: name and address.
     const prompt = [
-      `You are a test data generator. Generate ${numberOfCards} fake ${cardType} credit card(s) FOR SOFTWARE TESTING PURPOSES ONLY. These are NOT real cards.`,
+      `You are a test data generator. Generate ${numberOfCards} fake person record(s) FOR SOFTWARE TESTING PURPOSES ONLY.`,
       `Return ONLY a valid JSON array. No markdown, no explanation, no code fences. Just the raw JSON array.`,
-      `Each object must have exactly these keys:`,
-      `cardType (string): "${cardType}"`,
-      `cardNumber (string): properly spaced card number`,
-      `cardHolder (string): realistic fake name in ALL CAPS`,
-      `expiryDate (string): future date MM/YY format`,
-      `cvv (string): ${cvvLength}-digit number`,
-      `billingAddress (string): realistic fake US street address`,
-      `zipCode (string): US zip code`,
-      `note (string): "FOR TESTING PURPOSES ONLY"`,
+      `Each object must have EXACTLY these keys and nothing else:`,
+      `cardHolder (string): realistic fake full name in ALL CAPS (e.g. "JANE M DOE")`,
+      `billingAddress (string): realistic fake US street address (e.g. "123 Main St, Austin, TX")`,
+      `zipCode (string): valid US zip code matching the address city (5 digits)`,
     ].join('\n')
 
     try {
       const res = await api.post('/llm/generate', { llmConfigId: selectedLlmId, prompt })
       const rawText: string = res.data?.text || ''
-      // Strip markdown code fences if present
       const cleaned = rawText.replace(/```json|```/g, '').trim()
       const jsonMatch = cleaned.match(/\[[\s\S]*\]/)
       if (jsonMatch) {
-        // Normalize card fields — LLMs sometimes use snake_case or different names
-        const normalize = (raw: any): GeneratedCard => ({
-          cardType: raw.cardType || raw.card_type || cardType,
-          cardNumber: raw.cardNumber || raw.card_number || raw.number || '0000 0000 0000 0000',
-          cardHolder: raw.cardHolder || raw.card_holder || raw.holder || raw.name || 'TEST HOLDER',
-          expiryDate: raw.expiryDate || raw.expiry_date || raw.expiry || raw.exp || '12/28',
-          cvv: raw.cvv || raw.cvc || raw.securityCode || '000',
-          billingAddress: raw.billingAddress || raw.billing_address || raw.address || '',
-          zipCode: raw.zipCode || raw.zip_code || raw.zip || raw.postal_code || '00000',
-          note: raw.note || 'FOR TESTING PURPOSES ONLY',
-        })
+        // Inject Luhn-valid card numbers & CVVs locally — never trust the LLM for these
+        const normalize = (raw: any): GeneratedCard => {
+          const rawNumber = generateLuhnNumber(cardType)
+          return {
+            cardType,
+            cardNumber: formatCardNumber(rawNumber, cardType),
+            cardHolder: raw.cardHolder || raw.card_holder || raw.holder || raw.name || 'TEST HOLDER',
+            expiryDate: futureDateMMYY(),
+            cvv: randomCVV(cardType),
+            billingAddress: raw.billingAddress || raw.billing_address || raw.address || '',
+            zipCode: raw.zipCode || raw.zip_code || raw.zip || raw.postal_code || '00000',
+            note: 'FOR TESTING PURPOSES ONLY',
+          }
+        }
         const cards: GeneratedCard[] = JSON.parse(jsonMatch[0]).map(normalize)
         setGeneratedCards(cards)
         toast.success(`Generated ${cards.length} test card(s)!`)
@@ -101,7 +154,7 @@ const CreditCardGenerator: React.FC = () => {
     } catch (e: any) {
       setErrorModal({
         title: 'Generation Failed',
-        detail: e?.response?.data?.message || e?.message || 'Could not generate cards. Please check your LLM configuration.'
+        detail: e?.response?.data?.message || e?.message || 'Could not generate cards. Please check your LLM configuration.',
       })
     } finally {
       setGenerating(false)
@@ -124,11 +177,9 @@ const CreditCardGenerator: React.FC = () => {
   const getCardGradient = (type: string) =>
     CARD_TYPES.find(c => c.value === type)?.color || 'from-slate-600 to-slate-800'
 
-  const formatCardNumber = (num: string | undefined) => {
+  const displayCardNumber = (num: string | undefined) => {
     if (!num) return '•••• •••• •••• ••••'
-    const clean = num.replace(/\s/g, '')
-    if (clean.length === 15) return `${clean.slice(0, 4)} ${clean.slice(4, 10)} ${clean.slice(10)}`
-    return clean.replace(/(.{4})/g, '$1 ').trim()
+    return num
   }
 
   return (
@@ -244,7 +295,7 @@ const CreditCardGenerator: React.FC = () => {
                         </div>
                         <div className="w-8 h-6 bg-yellow-300/80 rounded-sm" />
                         <p className="text-white font-mono font-black text-xl tracking-widest cursor-pointer hover:opacity-80" onClick={() => copyField(card.cardNumber)} title="Click to copy">
-                          {formatCardNumber(card.cardNumber)}
+                          {displayCardNumber(card.cardNumber)}
                         </p>
                         <div className="flex justify-between items-end">
                           <div><p className="text-white/50 text-[9px] font-black uppercase tracking-widest">Card Holder</p><p className="text-white font-black text-sm">{card.cardHolder}</p></div>
