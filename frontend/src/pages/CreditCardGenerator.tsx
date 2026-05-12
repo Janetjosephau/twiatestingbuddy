@@ -6,11 +6,14 @@ import api from '../services/api'
 
 // ─── Luhn-Compliant Card Number Generator ────────────────────────────────────
 // BIN prefixes per network (real issuer ranges used for testing)
+// IMPORTANT: Only use universally-recognised TEST card BIN prefixes.
+// Real-world BINs (e.g. 4532 = Barclays UK) are rejected by most payment
+// processors in test mode. Use the well-known sandbox prefixes below instead.
 const CARD_BINS: Record<string, string[]> = {
-  Visa:               ['4000', '4111', '4242', '4012', '4532', '4916', '4929', '4539'],
-  Mastercard:         ['5100', '5200', '5300', '5400', '5500', '5105', '5425', '5521'],
-  'American Express': ['3714', '3782', '3787', '3790', '3400', '3711'],
-  Discover:           ['6011', '6221', '6440', '6450', '6500'],
+  Visa:               ['4000', '4111', '4242'],          // accepted by Stripe, Braintree, Square, PayPal sandbox
+  Mastercard:         ['5100', '5200', '5500', '5105'],  // standard test Mastercard BINs
+  'American Express': ['3714', '3782', '3787'],           // Amex test BINs
+  Discover:           ['6011', '6500'],                   // Discover sandbox BINs
 }
 const CARD_LENGTHS: Record<string, number> = {
   Visa: 16, Mastercard: 16, 'American Express': 15, Discover: 16,
