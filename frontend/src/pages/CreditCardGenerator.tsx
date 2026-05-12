@@ -1,360 +1,326 @@
 import React, { useState, useEffect } from 'react'
-import { CreditCard, RefreshCw, Copy, CheckCircle, ChevronDown, XCircle, Zap } from 'lucide-react'
+import { CreditCard, RefreshCw, Copy, ChevronDown, XCircle, Download, EyeOff, X, Calendar, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { llmApi } from '../services/api'
 import api from '../services/api'
 
-// ─── Luhn-Compliant Card Number Generator ────────────────────────────────────
-// BIN prefixes per network (real issuer ranges used for testing)
-// IMPORTANT: Only use universally-recognised TEST card BIN prefixes.
-// Real-world BINs (e.g. 4532 = Barclays UK) are rejected by most payment
-// processors in test mode. Use the well-known sandbox prefixes below instead.
+// ─── Luhn-Compliant Generator ─────────────────────────────────────────────────
+// Only BIN prefixes confirmed working in this app's test environment:
+//   Visa: 4000 ✅  4555 ✅   (4111 ❌  4242 ❌  4532 ❌)
 const CARD_BINS: Record<string, string[]> = {
-  Visa:               ['4000', '4111', '4242'],          // accepted by Stripe, Braintree, Square, PayPal sandbox
-  Mastercard:         ['5100', '5200', '5500', '5105'],  // standard test Mastercard BINs
-  'American Express': ['3714', '3782', '3787'],           // Amex test BINs
-  Discover:           ['6011', '6500'],                   // Discover sandbox BINs
+  Visa:               ['4000', '4555'],
+  Mastercard:         ['5100', '5200', '5500', '5105'],
+  'American Express': ['3714', '3782', '3787'],
+  Discover:           ['6011', '6500'],
 }
 const CARD_LENGTHS: Record<string, number> = {
   Visa: 16, Mastercard: 16, 'American Express': 15, Discover: 16,
 }
 
-function randomDigit() { return Math.floor(Math.random() * 10) }
+const randomDigit = () => Math.floor(Math.random() * 10)
 
 function generateLuhnNumber(cardType: string): string {
   const bins = CARD_BINS[cardType] || CARD_BINS['Visa']
   const bin = bins[Math.floor(Math.random() * bins.length)]
   const totalLen = CARD_LENGTHS[cardType] || 16
-
-  // BIN digits + random fill (leave last slot for check digit)
   const digits = bin.split('').map(Number)
   while (digits.length < totalLen - 1) digits.push(randomDigit())
-
-  // Calculate Luhn check digit
   let sum = 0
   for (let i = digits.length - 1; i >= 0; i--) {
     let d = digits[i]
     if ((digits.length - i) % 2 === 1) { d *= 2; if (d > 9) d -= 9 }
     sum += d
   }
-  const checkDigit = (10 - (sum % 10)) % 10
-  digits.push(checkDigit)
+  digits.push((10 - (sum % 10)) % 10)
   return digits.join('')
 }
 
 function formatCardNumber(num: string, cardType: string): string {
-  if (cardType === 'American Express') {
-    return `${num.slice(0, 4)} ${num.slice(4, 10)} ${num.slice(10)}`
-  }
+  if (cardType === 'American Express') return `${num.slice(0,4)} ${num.slice(4,10)} ${num.slice(10)}`
   return num.replace(/(\d{4})(?=\d)/g, '$1 ').trim()
 }
 
-function randomCVV(cardType: string): string {
-  const len = cardType === 'American Express' ? 4 : 3
-  return Array.from({ length: len }, () => randomDigit()).join('')
-}
+const randomCVV = (cardType: string) =>
+  Array.from({ length: cardType === 'American Express' ? 4 : 3 }, () => randomDigit()).join('')
 
 function futureDateMMYY(): string {
   const now = new Date()
   const year = now.getFullYear() + 2 + Math.floor(Math.random() * 3)
   const month = Math.floor(Math.random() * 12) + 1
-  return `${String(month).padStart(2, '0')}/${String(year).slice(2)}`
+  return `${String(month).padStart(2,'0')}/${String(year).slice(2)}`
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface GeneratedCard {
-  cardType: string
-  cardNumber: string
-  cardHolder: string
-  expiryDate: string
-  cvv: string
-  billingAddress?: string
-  zipCode?: string
-  note?: string
+  cardType: string; cardNumber: string; cardHolder: string
+  expiryDate: string; cvv: string; billingAddress?: string; zipCode?: string
 }
 
 const CARD_TYPES = [
-  { value: 'Visa', label: 'Visa', color: 'from-blue-600 to-blue-800' },
-  { value: 'Mastercard', label: 'Mastercard', color: 'from-red-600 to-orange-600' },
-  { value: 'American Express', label: 'American Express', color: 'from-green-600 to-teal-700' },
-  { value: 'Discover', label: 'Discover', color: 'from-orange-500 to-yellow-600' },
+  { value: 'Visa', label: 'Visa' },
+  { value: 'Mastercard', label: 'Mastercard' },
+  { value: 'American Express', label: 'American Express' },
+  { value: 'Discover', label: 'Discover' },
 ]
 
 const CreditCardGenerator: React.FC = () => {
-  const [cardType, setCardType] = useState('Visa')
-  const [numberOfCards, setNumberOfCards] = useState(1)
-  const [llmConfigs, setLlmConfigs] = useState<any[]>([])
+  const [cardType, setCardType]           = useState('Visa')
+  const [numberOfCards, setNumberOfCards] = useState(5)
+  const [llmConfigs, setLlmConfigs]       = useState<any[]>([])
   const [selectedLlmId, setSelectedLlmId] = useState('')
-  const [generating, setGenerating] = useState(false)
+  const [generating, setGenerating]       = useState(false)
   const [generatedCards, setGeneratedCards] = useState<GeneratedCard[]>([])
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
-  const [errorModal, setErrorModal] = useState<{ title: string; detail: string } | null>(null)
+  const [errorModal, setErrorModal]       = useState<{title:string;detail:string}|null>(null)
+  const [includeExpiry, setIncludeExpiry] = useState(false)
+  const [includeCVV, setIncludeCVV]       = useState(false)
 
-  useEffect(() => {
-    loadLlmConfigs()
-  }, [])
+  const [showResults, setShowResults]     = useState(true)
+  const [generatedAt, setGeneratedAt]     = useState<Date|null>(null)
+  const [hoveredIdx, setHoveredIdx]       = useState<number|null>(null)
+
+  useEffect(() => { loadLlmConfigs() }, [])
 
   const loadLlmConfigs = async () => {
     try {
       const res = await llmApi.getConfigs()
       setLlmConfigs(res.data)
       if (res.data.length > 0) setSelectedLlmId(res.data[0].id)
-    } catch (e) {
-      console.error('Failed to load LLM configs')
-    }
+    } catch { console.error('Failed to load LLM configs') }
   }
 
   const handleGenerate = async () => {
-    if (!selectedLlmId) {
-      toast.error('Please configure an LLM connection first.')
-      return
-    }
-    if (numberOfCards < 1 || numberOfCards > 20) {
-      toast.error('Number of cards must be between 1 and 20.')
-      return
-    }
+    if (!selectedLlmId) { toast.error('Please configure an LLM connection first.'); return }
+    if (numberOfCards < 1 || numberOfCards > 20) { toast.error('Number of cards must be between 1 and 20.'); return }
+    setGenerating(true); setGeneratedCards([])
 
-    setGenerating(true)
-    setGeneratedCards([])
-
-    // Card numbers, CVVs, and expiry are generated locally (Luhn-compliant).
-    // The LLM is only asked for human-readable data: name and address.
     const prompt = [
       `You are a test data generator. Generate ${numberOfCards} fake person record(s) FOR SOFTWARE TESTING PURPOSES ONLY.`,
-      `Return ONLY a valid JSON array. No markdown, no explanation, no code fences. Just the raw JSON array.`,
-      `Each object must have EXACTLY these keys and nothing else:`,
-      `cardHolder (string): realistic fake full name in ALL CAPS (e.g. "JANE M DOE")`,
-      `billingAddress (string): realistic fake US street address (e.g. "123 Main St, Austin, TX")`,
-      `zipCode (string): valid US zip code matching the address city (5 digits)`,
+      `Return ONLY a valid JSON array. No markdown, no explanation, no code fences.`,
+      `Each object must have EXACTLY: cardHolder (ALL CAPS full name), billingAddress (US street), zipCode (5-digit US zip).`,
     ].join('\n')
 
     try {
       const res = await api.post('/llm/generate', { llmConfigId: selectedLlmId, prompt })
-      const rawText: string = res.data?.text || ''
-      const cleaned = rawText.replace(/```json|```/g, '').trim()
+      const cleaned = (res.data?.text || '').replace(/```json|```/g, '').trim()
       const jsonMatch = cleaned.match(/\[[\s\S]*\]/)
-      if (jsonMatch) {
-        // Inject Luhn-valid card numbers & CVVs locally — never trust the LLM for these
-        const normalize = (raw: any): GeneratedCard => {
-          const rawNumber = generateLuhnNumber(cardType)
-          return {
-            cardType,
-            cardNumber: formatCardNumber(rawNumber, cardType),
-            cardHolder: raw.cardHolder || raw.card_holder || raw.holder || raw.name || 'TEST HOLDER',
-            expiryDate: futureDateMMYY(),
-            cvv: randomCVV(cardType),
-            billingAddress: raw.billingAddress || raw.billing_address || raw.address || '',
-            zipCode: raw.zipCode || raw.zip_code || raw.zip || raw.postal_code || '00000',
-            note: 'FOR TESTING PURPOSES ONLY',
-          }
+      if (!jsonMatch) throw new Error('The AI returned an unexpected format. Please try again.')
+
+      const usedNumbers = new Set<string>()
+      const normalize = (raw: any): GeneratedCard => {
+        let rawNumber: string
+        let attempts = 0
+        do { rawNumber = generateLuhnNumber(cardType); attempts++ } while (usedNumbers.has(rawNumber) && attempts < 100)
+        usedNumbers.add(rawNumber)
+        return {
+          cardType,
+          cardNumber:     formatCardNumber(rawNumber, cardType),
+          cardHolder:     raw.cardHolder || raw.card_holder || raw.name || 'TEST HOLDER',
+          expiryDate:     futureDateMMYY(),
+          cvv:            randomCVV(cardType),
+          billingAddress: raw.billingAddress || raw.billing_address || raw.address || '',
+          zipCode:        raw.zipCode || raw.zip_code || raw.zip || '00000',
         }
-        const cards: GeneratedCard[] = JSON.parse(jsonMatch[0]).map(normalize)
-        setGeneratedCards(cards)
-        toast.success(`Generated ${cards.length} test card(s)!`)
-      } else {
-        throw new Error('The AI returned an unexpected format. Please try again.')
       }
+      const cards: GeneratedCard[] = JSON.parse(jsonMatch[0]).map(normalize)
+      setGeneratedCards(cards); setGeneratedAt(new Date()); setShowResults(true)
+      toast.success(`Generated ${cards.length} test card(s)!`)
     } catch (e: any) {
-      setErrorModal({
-        title: 'Generation Failed',
-        detail: e?.response?.data?.message || e?.message || 'Could not generate cards. Please check your LLM configuration.',
-      })
-    } finally {
-      setGenerating(false)
-    }
+      setErrorModal({ title: 'Generation Failed', detail: e?.response?.data?.message || e?.message || 'Could not generate cards.' })
+    } finally { setGenerating(false) }
   }
 
-  const copyToClipboard = (card: GeneratedCard, index: number) => {
-    const text = `Card Type: ${card.cardType}\nCard Number: ${card.cardNumber}\nCard Holder: ${card.cardHolder}\nExpiry: ${card.expiryDate}\nCVV: ${card.cvv}\nBilling Address: ${card.billingAddress}\nZIP: ${card.zipCode}\nNote: ${card.note}`
-    navigator.clipboard.writeText(text)
-    setCopiedIndex(index)
-    toast.success('Card details copied!')
-    setTimeout(() => setCopiedIndex(null), 2000)
+  const copyField = (value: string) => { navigator.clipboard.writeText(value); toast.success('Copied!') }
+
+  const copyAllCards = () => {
+    navigator.clipboard.writeText(generatedCards.map(c => c.cardNumber).join(', '))
+    toast.success('All card numbers copied!')
   }
 
-  const copyField = (value: string) => {
-    navigator.clipboard.writeText(value)
-    toast.success('Copied!')
+  const downloadCards = () => {
+    const lines = generatedCards.map((c, i) => {
+      let line = `Card ${i+1}: ${c.cardNumber} | ${c.cardType} | ${c.cardHolder}`
+      if (includeExpiry) line += ` | Exp: ${c.expiryDate}`
+      if (includeCVV) line += ` | CVV: ${c.cvv}`
+      return line
+    })
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = 'test-cards.txt'; a.click()
+    URL.revokeObjectURL(url); toast.success('Downloaded!')
   }
 
-  const getCardGradient = (type: string) =>
-    CARD_TYPES.find(c => c.value === type)?.color || 'from-slate-600 to-slate-800'
-
-  const displayCardNumber = (num: string | undefined) => {
-    if (!num) return '•••• •••• •••• ••••'
-    return num
-  }
+  const iconBtn = 'w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all'
 
   return (
     <>
-      <div className="min-h-screen bg-[#f8fafc] p-8 md:p-12">
-        <div className="max-w-6xl mx-auto space-y-10">
+      <div className="min-h-screen bg-[#f8fafc] p-6 md:p-8">
+        <div className="max-w-6xl mx-auto flex gap-6 items-start">
 
-          {/* Header Card */}
-          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden">
-            <div className="p-10 pb-0 flex items-start space-x-4">
-              <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
-                <CreditCard size={28} />
+          {/* ── LEFT SIDEBAR ── */}
+          <div className="w-64 flex-shrink-0 bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5 sticky top-6">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600">
+                <CreditCard size={16} />
               </div>
               <div>
-                <h1 className="text-3xl font-black text-[#0f172a]">Credit Card Generator</h1>
-                <p className="text-slate-500 mt-1 font-medium">
-                  Generate realistic test credit cards using your configured AI model.{' '}
-                  <span className="text-emerald-600 font-black">For testing purposes only.</span>
-                </p>
+                <h1 className="text-sm font-black text-slate-900">Generator Settings</h1>
+                <p className="text-[10px] text-slate-400">Customize your credit card selection</p>
               </div>
             </div>
 
-            <div className="p-12 space-y-10">
-              {/* LLM Selection */}
-              <div className="space-y-3">
-                <label className="text-[11px] font-black text-slate-400 tracking-widest uppercase">AI Model</label>
-                <div className="relative">
-                  <select
-                    value={selectedLlmId}
-                    onChange={(e) => setSelectedLlmId(e.target.value)}
-                    className="w-full h-16 px-6 bg-slate-50 border-2 border-slate-100 rounded-2xl text-slate-700 font-bold focus:border-emerald-500 appearance-none outline-none"
-                  >
-                    {llmConfigs.length === 0 && <option value="">No LLM configured — go to LLM Configuration</option>}
-                    {llmConfigs.map(c => (
-                      <option key={c.id} value={c.id}>{c.name} ({c.model})</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                </div>
+            {/* AI Model */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">AI Model</label>
+              <div className="relative">
+                <select value={selectedLlmId} onChange={e => setSelectedLlmId(e.target.value)}
+                  className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-xs font-medium focus:border-emerald-400 appearance-none outline-none">
+                  {llmConfigs.length === 0 && <option value="">No LLM configured</option>}
+                  {llmConfigs.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
-
-              {/* Card Type + Number */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="space-y-3">
-                  <label className="text-[11px] font-black text-slate-400 tracking-widest uppercase">Card Type</label>
-                  <div className="relative">
-                    <select
-                      value={cardType}
-                      onChange={(e) => setCardType(e.target.value)}
-                      className="w-full h-16 px-6 bg-slate-50 border-2 border-slate-100 rounded-2xl text-slate-700 font-bold focus:border-emerald-500 appearance-none outline-none"
-                    >
-                      {CARD_TYPES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                    </select>
-                    <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[11px] font-black text-slate-400 tracking-widest uppercase">Number of Cards (Max 20)</label>
-                  <input
-                    type="number" min={1} max={20} value={numberOfCards}
-                    onChange={(e) => setNumberOfCards(Math.min(20, Math.max(1, parseInt(e.target.value) || 1)))}
-                    className="w-full h-16 px-6 bg-slate-50 border-2 border-slate-100 rounded-2xl text-slate-700 font-bold focus:border-emerald-500 outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Quick type badges */}
-              <div className="flex flex-wrap gap-3">
-                {CARD_TYPES.map(c => (
-                  <button key={c.value} onClick={() => setCardType(c.value)}
-                    className={`px-5 py-2.5 rounded-xl font-black text-sm transition-all ${cardType === c.value ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-100'}`}>
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Generate button */}
-              <button onClick={handleGenerate} disabled={generating || !selectedLlmId}
-                className="w-full h-16 bg-emerald-500 text-white rounded-2xl font-black text-lg hover:bg-emerald-600 transition-all disabled:opacity-50 shadow-xl shadow-emerald-100 flex items-center justify-center space-x-3">
-                {generating
-                  ? <><RefreshCw size={24} className="animate-spin" /><span>Generating...</span></>
-                  : <><Zap size={24} className="fill-current" /><span>Generate Test Cards</span></>
-                }
-              </button>
             </div>
+
+            {/* Number of Cards */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-bold text-slate-700">Number of Cards</label>
+              <input type="number" min={1} max={20} value={numberOfCards}
+                onChange={e => setNumberOfCards(Math.min(20, Math.max(1, parseInt(e.target.value)||1)))}
+                className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm font-medium focus:border-emerald-400 outline-none" />
+              <p className="text-[10px] text-slate-400">Max available with current settings: 20</p>
+            </div>
+
+            {/* Card Type */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-bold text-slate-700">Card Type</label>
+              <div className="relative">
+                <select value={cardType} onChange={e => setCardType(e.target.value)}
+                  className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm font-medium focus:border-emerald-400 appearance-none outline-none">
+                  {CARD_TYPES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+                <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Options */}
+            <div className="space-y-2.5">
+              <label className="text-sm font-bold text-slate-700">Options</label>
+              {[
+                { label: 'Include Expiry Date (MM/YY)', checked: includeExpiry, set: setIncludeExpiry },
+                { label: 'Include CVV/CVC Code',        checked: includeCVV,    set: setIncludeCVV },
+              ].map(opt => (
+                <label key={opt.label} className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer hover:text-slate-900 transition-colors">
+                  <input type="checkbox" checked={opt.checked} onChange={e => opt.set(e.target.checked)}
+                    className="w-3.5 h-3.5 accent-emerald-500 rounded" />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+
+            {/* Generate Button */}
+            <button onClick={handleGenerate} disabled={generating || !selectedLlmId}
+              className="w-full h-10 bg-emerald-500 text-white rounded-xl font-black text-sm hover:bg-emerald-600 transition-all disabled:opacity-50 shadow-lg shadow-emerald-100 flex items-center justify-center gap-2">
+              {generating
+                ? <><RefreshCw size={15} className="animate-spin" /><span>Generating...</span></>
+                : <><CreditCard size={15} /><span>Generate Now</span></>}
+            </button>
           </div>
 
-          {/* Results */}
-          {generatedCards.length > 0 && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between px-4">
-                <h2 className="text-xl font-black text-slate-900 flex items-center space-x-3">
-                  <span className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-sm shadow-sm">{generatedCards.length}</span>
-                  <span>Generated Test Cards</span>
-                </h2>
-                <button onClick={() => { const all = generatedCards.map(c => `${c.cardType} | ${c.cardNumber} | ${c.cardHolder} | ${c.expiryDate} | CVV: ${c.cvv}`).join('\n'); navigator.clipboard.writeText(all); toast.success('All cards copied!') }}
-                  className="text-xs font-black text-emerald-600 hover:text-emerald-700 flex items-center gap-2 bg-white border border-emerald-100 px-4 py-2 rounded-xl shadow-sm">
-                  <Copy size={14} /> Copy All
-                </button>
-              </div>
+          {/* ── MAIN RESULTS AREA ── */}
+          <div className="flex-1 min-w-0">
+            {generatedCards.length > 0 && showResults && (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {generatedCards.map((card, idx) => (
-                  <div key={idx} className="bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-lg transition-all overflow-hidden">
-                    {/* Visual card */}
-                    <div className={`bg-gradient-to-br ${getCardGradient(card.cardType)} p-6 relative overflow-hidden`}>
-                      <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-                      <div className="absolute bottom-0 left-0 w-28 h-28 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
-                      <div className="relative z-10 space-y-4">
-                        <div className="flex justify-between items-start">
-                          <span className="text-white/70 text-xs font-black uppercase tracking-widest">{card.cardType}</span>
-                          <span className="text-white/60 text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full">TEST ONLY</span>
-                        </div>
-                        <div className="w-8 h-6 bg-yellow-300/80 rounded-sm" />
-                        <p className="text-white font-mono font-black text-xl tracking-widest cursor-pointer hover:opacity-80" onClick={() => copyField(card.cardNumber)} title="Click to copy">
-                          {displayCardNumber(card.cardNumber)}
-                        </p>
-                        <div className="flex justify-between items-end">
-                          <div><p className="text-white/50 text-[9px] font-black uppercase tracking-widest">Card Holder</p><p className="text-white font-black text-sm">{card.cardHolder}</p></div>
-                          <div className="text-right"><p className="text-white/50 text-[9px] font-black uppercase tracking-widest">Expires</p><p className="text-white font-black text-sm">{card.expiryDate}</p></div>
-                          <div className="text-right"><p className="text-white/50 text-[9px] font-black uppercase tracking-widest">CVV</p><p className="text-white font-black text-sm">{card.cvv}</p></div>
-                        </div>
-                      </div>
+                {/* Results Header */}
+                <div className="px-6 py-4 border-b border-slate-100 flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-black text-slate-900 text-lg">Generated cards</h2>
+                      <span className="bg-emerald-100 text-emerald-700 text-xs font-black px-2 py-0.5 rounded-full">
+                        {generatedCards.length} cards
+                      </span>
                     </div>
-
-                    {/* Detail fields */}
-                    <div className="p-6 space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        {[
-                          { label: 'Card Number', value: card.cardNumber },
-                          { label: 'CVV', value: card.cvv },
-                          { label: 'Expiry Date', value: card.expiryDate },
-                          { label: 'ZIP Code', value: card.zipCode || 'N/A' },
-                        ].map(({ label, value }) => (
-                          <div key={label} className="bg-slate-50 rounded-xl p-3 cursor-pointer hover:bg-emerald-50 border border-transparent hover:border-emerald-100 transition-all"
-                            onClick={() => copyField(value || '')} title={`Click to copy ${label}`}>
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
-                            <p className="font-black text-slate-700 text-sm mt-1 font-mono">{value}</p>
-                          </div>
-                        ))}
+                    <p className="text-xs text-slate-400 mt-0.5">Your randomly generated cards are ready</p>
+                    {generatedAt && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="flex items-center gap-1 text-[11px] font-semibold text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-2 py-0.5">
+                          <Calendar size={10} /> {generatedAt.toLocaleDateString()}
+                        </span>
+                        <span className="flex items-center gap-1 text-[11px] font-semibold text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-2 py-0.5">
+                          <Clock size={10} /> {generatedAt.toLocaleTimeString()}
+                        </span>
                       </div>
-                      {card.billingAddress && (
-                        <div className="bg-slate-50 rounded-xl p-3 cursor-pointer hover:bg-emerald-50 border border-transparent hover:border-emerald-100 transition-all"
-                          onClick={() => copyField(`${card.billingAddress}, ${card.zipCode}`)} title="Click to copy address">
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Billing Address</p>
-                          <p className="font-bold text-slate-600 text-sm mt-1">{card.billingAddress}</p>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between pt-2">
-                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{card.note || 'For Testing Only'}</span>
-                        <button onClick={() => copyToClipboard(card, idx)}
-                          className="flex items-center gap-2 text-xs font-black text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-4 py-2 rounded-xl transition-all">
-                          {copiedIndex === idx ? <><CheckCircle size={14} /><span>Copied!</span></> : <><Copy size={14} /><span>Copy All</span></>}
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setShowResults(false)} className={iconBtn} title="Hide"><EyeOff size={14} /></button>
+                    <button onClick={copyAllCards}  className={iconBtn} title="Copy All"><Copy size={14} /></button>
+                    <button onClick={downloadCards} className={iconBtn} title="Download"><Download size={14} /></button>
+                    <button onClick={() => { setGeneratedCards([]); setGeneratedAt(null) }} className={iconBtn} title="Clear"><X size={14} /></button>
+                  </div>
+                </div>
+
+                {/* Card Grid — 3 columns */}
+                <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {generatedCards.map((card, idx) => (
+                    <div key={idx}
+                      onMouseEnter={() => setHoveredIdx(idx)}
+                      onMouseLeave={() => setHoveredIdx(null)}
+                      className="bg-slate-50 rounded-xl p-4 border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/20 transition-all">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-mono font-black text-slate-900 text-sm leading-snug">{card.cardNumber}</p>
+                        <button onClick={() => copyField(card.cardNumber)}
+                          className={`flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all ${hoveredIdx === idx ? 'opacity-100' : 'opacity-0'}`}
+                          title="Copy card number">
+                          <Copy size={13} />
                         </button>
                       </div>
+                      <span className="inline-block mt-2 text-[10px] font-bold text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
+                        {card.cardType}
+                      </span>
+                      <p className="text-xs text-slate-500 mt-2">
+                        Cardholder: <span className="font-bold text-slate-700">{card.cardHolder}</span>
+                      </p>
+                      {includeExpiry && <p className="text-[11px] text-slate-400 mt-1">Expires: <span className="font-semibold text-slate-600">{card.expiryDate}</span></p>}
+                      {includeCVV    && <p className="text-[11px] text-slate-400 mt-0.5">CVV: <span className="font-semibold text-slate-600">{card.cvv}</span></p>}
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+                  ))}
+                </div>
 
-          {/* Empty state */}
-          {generatedCards.length === 0 && !generating && (
-            <div className="bg-white rounded-[2rem] border-2 border-dashed border-slate-200 p-16 text-center">
-              <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto mb-6 text-slate-300">
-                <CreditCard size={48} />
+                {/* As Text */}
+                <div className="mx-5 mb-5 bg-slate-50 border border-slate-100 rounded-xl p-4">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">As Text:</p>
+                  <p className="text-xs text-slate-600 font-mono leading-relaxed break-all">
+                    {generatedCards.map(c => c.cardNumber).join(', ')}
+                  </p>
+                </div>
               </div>
-              <p className="text-slate-400 font-black text-lg">No cards generated yet</p>
-              <p className="text-slate-400 text-sm font-medium mt-2">Select your options above and click <span className="text-emerald-500 font-black">Generate Test Cards</span></p>
-            </div>
-          )}
+            )}
+
+            {/* Hidden-results banner */}
+            {generatedCards.length > 0 && !showResults && (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-6 py-4 flex items-center justify-between">
+                <span className="text-sm font-bold text-slate-600">Results hidden — {generatedCards.length} cards generated</span>
+                <button onClick={() => setShowResults(true)}
+                  className="text-xs font-black text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-4 py-2 rounded-xl transition-all">
+                  Show Results
+                </button>
+              </div>
+            )}
+
+            {/* Empty state */}
+            {generatedCards.length === 0 && !generating && (
+              <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-16 text-center">
+                <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-300">
+                  <CreditCard size={36} />
+                </div>
+                <p className="text-slate-400 font-black">No cards generated yet</p>
+                <p className="text-slate-400 text-xs font-medium mt-1">
+                  Configure your settings and click <span className="text-emerald-500 font-black">Generate Now</span>
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -362,23 +328,23 @@ const CreditCardGenerator: React.FC = () => {
       {errorModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setErrorModal(null)} />
-          <div className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300">
-            <div className="h-2 w-full bg-gradient-to-r from-red-500 to-rose-500" />
-            <div className="p-10">
-              <div className="flex items-start space-x-4 mb-6">
-                <div className="w-14 h-14 rounded-2xl bg-red-50 border-2 border-red-100 flex items-center justify-center flex-shrink-0">
-                  <XCircle size={32} className="text-red-500" />
+          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div className="h-1.5 w-full bg-gradient-to-r from-red-500 to-rose-500" />
+            <div className="p-8">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
+                  <XCircle size={22} className="text-red-500" />
                 </div>
-                <div className="pt-1">
-                  <h2 className="text-xl font-black text-slate-900">{errorModal.title}</h2>
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">Credit Card Generator · Error</p>
+                <div>
+                  <h2 className="text-base font-black text-slate-900">{errorModal.title}</h2>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Credit Card Generator · Error</p>
                 </div>
               </div>
-              <div className="bg-red-50 border border-red-100 rounded-2xl p-5 mb-8">
+              <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-6">
                 <p className="text-sm font-bold text-red-700 leading-relaxed">{errorModal.detail}</p>
               </div>
               <button onClick={() => setErrorModal(null)}
-                className="w-full h-12 bg-slate-900 text-white rounded-xl font-black hover:bg-slate-800 transition-all">
+                className="w-full h-10 bg-slate-900 text-white rounded-xl font-black text-sm hover:bg-slate-800 transition-all">
                 Close
               </button>
             </div>
