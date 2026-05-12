@@ -90,7 +90,7 @@ const CreditCardGenerator: React.FC = () => {
 
   const handleGenerate = async () => {
     if (!selectedLlmId) { toast.error('Please configure an LLM connection first.'); return }
-    if (numberOfCards < 1 || numberOfCards > 20) { toast.error('Number of cards must be between 1 and 20.'); return }
+    if (numberOfCards < 1 || numberOfCards > 9) { toast.error('Number of cards must be between 1 and 9.'); return }
     setGenerating(true); setGeneratedCards([])
 
     const prompt = [
@@ -163,7 +163,7 @@ const CreditCardGenerator: React.FC = () => {
                 <CreditCard size={16} />
               </div>
               <div>
-                <h1 className="text-sm font-black text-slate-900">Generator Settings</h1>
+                <h1 className="text-xl font-black text-slate-900">Generator Settings</h1>
                 <p className="text-[10px] text-slate-400">Customize your credit card selection</p>
               </div>
             </div>
@@ -184,10 +184,10 @@ const CreditCardGenerator: React.FC = () => {
             {/* Number of Cards */}
             <div className="space-y-1.5">
               <label className="text-sm font-bold text-slate-700">Number of Cards</label>
-              <input type="number" min={1} max={20} value={numberOfCards}
-                onChange={e => setNumberOfCards(Math.min(20, Math.max(1, parseInt(e.target.value)||1)))}
+              <input type="number" min={1} max={9} value={numberOfCards}
+                onChange={e => setNumberOfCards(Math.min(9, Math.max(1, parseInt(e.target.value)||1)))}
                 className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm font-medium focus:border-emerald-400 outline-none" />
-              <p className="text-[10px] text-slate-400">Max available with current settings: 20</p>
+              <p className="text-[10px] text-slate-400">Max available with current settings: 9</p>
             </div>
 
             {/* Card Type */}
