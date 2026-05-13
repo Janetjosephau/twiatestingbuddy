@@ -11,7 +11,7 @@ const CARD_BINS: Record<string, string[]> = {
   Visa:               ['455572', '444457', '422241', '400048', '400037', '400043', '400042', '400056'],
   Mastercard:         ['540003', '540086', '520082', '550045'],
   'American Express': ['3714', '3782', '3787'],
-  Discover:           ['6011', '6500'],
+  Discover:           ['601111', '601100', '650000', '650028', '650008'],
 }
 const CARD_LENGTHS: Record<string, number> = {
   Visa: 16, Mastercard: 16, 'American Express': 15, Discover: 16,
