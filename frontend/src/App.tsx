@@ -4,7 +4,6 @@ import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import LLMConfiguration from './pages/LLMConfiguration'
 import RallyIntegration from './pages/RallyIntegration'
-import TestPlanGenerator from './pages/TestPlanGenerator'
 import TestCaseGenerator from './pages/TestCaseGenerator'
 import CreditCardGenerator from './pages/CreditCardGenerator'
 import ReportsAnalytics from './pages/ReportsAnalytics'
@@ -20,7 +19,6 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/connections/llm" element={<LLMConfiguration />} />
             <Route path="/connections/rally" element={<RallyIntegration />} />
-            <Route path="/generator/test-plan" element={<TestPlanGenerator />} />
             <Route path="/generator/test-case" element={<TestCaseGenerator />} />
             <Route path="/generator/credit-card" element={<CreditCardGenerator />} />
             <Route path="/reports" element={<ReportsAnalytics />} />

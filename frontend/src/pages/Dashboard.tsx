@@ -168,17 +168,6 @@ const Dashboard: React.FC = () => {
           <div className="space-y-8">
             <h2 className="text-2xl font-black text-[#0f172a]">Quick Launch</h2>
             <div className="space-y-4 w-3/4">
-              <Link to="/generator/test-plan" className="block p-6 bg-emerald-500 border-2 border-emerald-400 rounded-3xl hover:bg-emerald-600 transition-all group shadow-lg shadow-emerald-100">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white">
-                    <FileText size={20} />
-                  </div>
-                  <PlusCircle size={20} className="text-white/40 group-hover:text-white transition-colors" />
-                </div>
-                <h4 className="text-white font-bold text-lg mb-1">Create Test Plan</h4>
-                <p className="text-emerald-50 text-sm font-medium">Generate comprehensive plans from Rally stories.</p>
-              </Link>
-
               <Link to="/generator/test-case" className="block p-6 bg-emerald-500 border-2 border-emerald-400 rounded-3xl hover:bg-emerald-600 transition-all group shadow-lg shadow-emerald-100">
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white">

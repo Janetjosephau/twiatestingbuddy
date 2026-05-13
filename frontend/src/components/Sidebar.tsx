@@ -92,17 +92,7 @@ const Sidebar: React.FC = () => {
           <div>
             <p className="text-[11px] font-black text-slate-500 tracking-widest uppercase mb-6">Generator</p>
             <ul className="space-y-4">
-              <li>
-                <Link
-                  to="/generator/test-plan"
-                  className={`flex items-center space-x-3 transition-all duration-200 ${
-                    isActive('/generator/test-plan') ? 'text-emerald-500' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <FileText size={22} className={isActive('/generator/test-plan') ? 'fill-emerald-500/10' : ''} />
-                  <span className="font-bold">Test Plan Generator</span>
-                </Link>
-              </li>
+
               <li>
                 <Link
                   to="/generator/test-case"
