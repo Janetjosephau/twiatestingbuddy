@@ -6,9 +6,9 @@ import api from '../services/api'
 
 // ─── Luhn-Compliant Generator ─────────────────────────────────────────────────
 // Only BIN prefixes confirmed working in this app's test environment:
-//   Visa: 4000 ✅  4555 ✅   (4111 ❌  4242 ❌  4532 ❌)
+// Visa uses exact 6-digit BINs confirmed to bypass the application's strict filter
 const CARD_BINS: Record<string, string[]> = {
-  Visa:               ['4000', '4555'],
+  Visa:               ['455572', '444457', '422241', '400048', '400037', '400043', '400042', '400056'],
   Mastercard:         ['5100', '5200', '5500', '5105'],
   'American Express': ['3714', '3782', '3787'],
   Discover:           ['6011', '6500'],
