@@ -9,7 +9,7 @@ import api from '../services/api'
 // Visa uses exact 6-digit BINs confirmed to bypass the application's strict filter
 const CARD_BINS: Record<string, string[]> = {
   Visa:               ['455572', '444457', '422241', '400048', '400037', '400043', '400042', '400056'],
-  Mastercard:         ['5100', '5200', '5500', '5105'],
+  Mastercard:         ['540003', '540086', '520082', '550045'],
   'American Express': ['3714', '3782', '3787'],
   Discover:           ['6011', '6500'],
 }
