@@ -265,7 +265,7 @@ const CreditCardGenerator: React.FC = () => {
                     <div key={idx}
                       onMouseEnter={() => setHoveredIdx(idx)}
                       onMouseLeave={() => setHoveredIdx(null)}
-                      className="bg-slate-50 rounded-xl p-4 border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/20 transition-all">
+                      className="bg-emerald-100 rounded-xl p-4 border border-slate-100 hover:border-emerald-200 transition-all">
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-mono font-black text-slate-900 text-sm leading-snug">{card.cardNumber}</p>
                         <button onClick={() => copyField(card.cardNumber)}
