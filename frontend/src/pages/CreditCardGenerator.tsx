@@ -36,8 +36,7 @@ function generateLuhnNumber(cardType: string): string {
 }
 
 function formatCardNumber(num: string, cardType: string): string {
-  if (cardType === 'American Express') return `${num.slice(0,4)} ${num.slice(4,10)} ${num.slice(10)}`
-  return num.replace(/(\d{4})(?=\d)/g, '$1 ').trim()
+  return num
 }
 
 const randomCVV = (cardType: string) =>
